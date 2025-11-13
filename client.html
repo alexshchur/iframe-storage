@@ -1,9 +1,19 @@
 <div>
     <div>Client Page</div>
 </div>
-<script src="./dist/index.js"></script>
+<!-- <script src="./dist/hub.js"></script> -->
+<script src="dist/browser.js"></script>
 <script>
-    const hub = constructHub({ url: 'https://example.com/hub' });
-    const client = constructClient({ hubUrl: 'https://example.com/hub' });
-    console.log({ hub, client });
+    const hub = IframeStorage.constructHub();
+    console.log('hub constructed:', hub);
+    const client = IframeStorage.constructClient();
+    console.log('client constructed:', client);
+
+    async function main() {
+        await client['localStorage.setItem']('foo', 'bar');
+        const value = await client['localStorage.getItem']('foo');
+
+        console.log('Got value from hub:', value);
+    }
+    main();
 </script>
