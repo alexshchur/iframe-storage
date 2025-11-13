@@ -1,0 +1,9 @@
+<div>
+    <div>Client Page</div>
+</div>
+<script src="./dist/index.js"></script>
+<script>
+    const hub = constructHub({ url: 'https://example.com/hub' });
+    const client = constructClient({ hubUrl: 'https://example.com/hub' });
+    console.log({ hub, client });
+</script>
