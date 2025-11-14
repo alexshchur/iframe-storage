@@ -19,6 +19,10 @@
         await client['localStorage.setItem']('foo', 'bar ' + Math.random());
         const value = await client['localStorage.getItem']('foo');
         console.log('Got value from hub:', value);
-    }    
+    }
+
+    addEventListener('message', (event) => {
+        console.log('Client received message:', event.data);
+    });
 </script>
 <button onclick="main()"> send </button>

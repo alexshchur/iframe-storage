@@ -16,6 +16,9 @@
             postMessage: postMessageFn
         });
         console.log('hub constructed:', hub, postMessageFn);
+        addEventListener('message', (event) => {
+            console.log('Hub received message:', event.data);
+        });
     </script>
 </body>
 
