@@ -40,30 +40,32 @@ process.on("SIGTERM", () => {
 procs.push(run("npm", ["run", "build:watch"], "build"));
 procs.push(
   run(
-    "node",
+    process.platform === "win32" ? "npx.cmd" : "npx",
     [
-      "scripts/server.js",
-      "--file",
-      "hub.html",
-      "--port",
+      "serve",
+      "-l",
       "5001",
-      "--host",
-      "0.0.0.0",
+      "--no-port-switching",
+      "-n",
+      "-c",
+      "configs/serve.hub.json",
+      ".",
     ],
     "hub"
   )
 );
 procs.push(
   run(
-    "node",
+    process.platform === "win32" ? "npx.cmd" : "npx",
     [
-      "scripts/server.js",
-      "--file",
-      "client.html",
-      "--port",
+      "serve",
+      "-l",
       "5000",
-      "--host",
-      "0.0.0.0",
+      "--no-port-switching",
+      "-n",
+      "-c",
+      "configs/serve.client.json",
+      ".",
     ],
     "client"
   )
