@@ -6,8 +6,7 @@
     "build": "esbuild src/index.ts --bundle --format=iife --global-name=IframeStorage --outfile=dist/browser.js",
     "build:watch": "esbuild src/index.ts --watch --bundle --format=iife --global-name=IframeStorage --outfile=dist/browser.js",
     "serve:client": "serve -l 5100 -n -c configs/serve.client.json .",
-    "serve:hub": "serve -l 5101 -n -c configs/serve.hub.json .",
-    "dev": "node scripts/dev.js"
+    "serve:hub": "serve -l 5101 -n -c configs/serve.hub.json ."
   },
   "author": "hi@alexeyshchur.com",
   "license": "ISC",
