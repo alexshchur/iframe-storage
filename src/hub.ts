@@ -4,24 +4,28 @@ type HubOptions = {
 };
 
 type Hub = {};
+export enum ApiMethods {
+  LocalStorage_SetItem = "localStorage.setItem",
+  LocalStorage_GetItem = "localStorage.getItem",
+  LocalStorage_RemoveItem = "localStorage.removeItem",
+  LocalStorage_Clear = "localStorage.clear",
+  LocalStorage_Key = "localStorage.key",
+}
 export function constructHub(options: HubOptions = {}): Hub {
   console.log("constructHub options:", options);
   const hubService = {
-    "localStorage.setItem": (key: string, value: string) => {
-      return localStorage.setItem(key, value);
-    },
-    "localStorage.getItem": (key: string) => {
-      return localStorage.getItem(key);
-    },
-    "localStorage.removeItem": (key: string) => {
-      return localStorage.removeItem(key); //
-    },
-    "localStorage.clear": () => {
-      return localStorage.clear();
-    },
-    "localStorage.key": (index: number) => {
-      return localStorage.key(index); //
-    },
+    [ApiMethods.LocalStorage_SetItem]: (key: string, value: string) =>
+      localStorage.setItem(key, value),
+
+    [ApiMethods.LocalStorage_GetItem]: (key: string) =>
+      localStorage.getItem(key),
+
+    [ApiMethods.LocalStorage_RemoveItem]: (key: string) =>
+      localStorage.removeItem(key),
+
+    [ApiMethods.LocalStorage_Clear]: () => localStorage.clear(),
+
+    [ApiMethods.LocalStorage_Key]: (index: number) => localStorage.key(index),
   };
 
   for (const [methodName, methodImpl] of Object.entries(hubService)) {
