@@ -4,18 +4,18 @@
 <script src="dist/browser.js"></script>
 <script type="text/javascript">
 
-    const client = IframeStorage.constructClient({
+    const remoteOriginStorageclient = IframeStorage.constructClient({
         iframe: { src: 'http://iframehub.com:5101/' }
     });
-    console.log('client constructed:', client);
+    console.log('client constructed:', remoteOriginStorageclient);
 
     async function exampleSetAndGet() {
-        await client.localStorage.setItem('foo', 'bar ' + Math.random());
-        const value = await client.localStorage.getItem('foo');
+        await remoteOriginStorageclient.localStorage.setItem('foo', 'bar ' + Math.random());
+        const value = await remoteOriginStorageclient.localStorage.getItem('foo');
         console.log('Got value localStorage via hub:', value);
 
-        await client.indexedDBKeyval.set('foo-indexed-db', 'value-indexed-db ' + Math.random());
-        const idbValue = await client.indexedDBKeyval.get('foo-indexed-db');
+        await remoteOriginStorageclient.indexedDBKeyval.set('foo-indexed-db', 'value-indexed-db ' + Math.random());
+        const idbValue = await remoteOriginStorageclient.indexedDBKeyval.get('foo-indexed-db');
         console.log('Got value from IndexedDB via hub:', idbValue);
     }
 

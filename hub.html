@@ -11,13 +11,7 @@
     <div>Hub Page</div>
     <script src="dist/browser.js"></script>
     <script>
-
-        const hub = IframeStorage.constructHub({
-            postMessage: window.parent.postMessage.bind(window.parent)
-        });
-
-        console.log('hub constructed:', hub);
-
+        IframeStorage.initHub();
         // for debug purposes
         addEventListener('message', (event) => {
             console.log('Hub received message:', event.data);
