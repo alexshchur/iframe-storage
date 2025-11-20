@@ -1,5 +1,6 @@
 import { caller } from "postmsg-rpc";
 import { ApiMethods } from "./hub";
+import { MessagingOptions } from "./types";
 type Client = {
   localStorage: {
     setItem: (key: string, value: string) => Promise<void>;
@@ -20,11 +21,12 @@ const DEFAULT_IFRAME_ID = "iframe-storage-hub";
 type ClientOptions = {
   iframe: {
     src: string;
+    messagingOptions?: MessagingOptions;
   };
 };
 
 export function constructClient({
-  iframe: { src: iframeSrc },
+  iframe: { src: iframeSrc, messagingOptions },
 }: ClientOptions): Client {
   const postMessage = createIframePostMessage(iframeSrc);
   const callerOptions = { postMessage };
@@ -32,29 +34,53 @@ export function constructClient({
   return {
     localStorage: {
       setItem: (key: string, value: string) =>
-        caller(ApiMethods.LocalStorage_SetItem, callerOptions)(key, value),
+        caller(ApiMethods.LocalStorage_SetItem, callerOptions)(
+          key,
+          value,
+          messagingOptions
+        ),
 
       getItem: (key: string) =>
-        caller(ApiMethods.LocalStorage_GetItem, callerOptions)(key),
+        caller(ApiMethods.LocalStorage_GetItem, callerOptions)(
+          key,
+          messagingOptions
+        ),
 
       removeItem: (key: string) =>
-        caller(ApiMethods.LocalStorage_RemoveItem, callerOptions)(key),
+        caller(ApiMethods.LocalStorage_RemoveItem, callerOptions)(
+          key,
+          messagingOptions
+        ),
 
-      clear: () => caller(ApiMethods.LocalStorage_Clear, callerOptions)(),
+      clear: () =>
+        caller(ApiMethods.LocalStorage_Clear, callerOptions)(messagingOptions),
 
       key: (index: number) =>
-        caller(ApiMethods.LocalStorage_Key, callerOptions)(index),
+        caller(ApiMethods.LocalStorage_Key, callerOptions)(
+          index,
+          messagingOptions
+        ),
     },
 
     indexedDBKeyval: {
       set: (key: string, value: string) =>
-        caller(ApiMethods.indexDBKeyval_Set, callerOptions)(key, value),
+        caller(ApiMethods.indexDBKeyval_Set, callerOptions)(
+          key,
+          value,
+          messagingOptions
+        ),
 
       get: (key: string) =>
-        caller(ApiMethods.indexDBKeyval_Get, callerOptions)(key),
+        caller(ApiMethods.indexDBKeyval_Get, callerOptions)(
+          key,
+          messagingOptions
+        ),
 
       del: (key: string) =>
-        caller(ApiMethods.indexDBKeyval_Del, callerOptions)(key),
+        caller(ApiMethods.indexDBKeyval_Del, callerOptions)(
+          key,
+          messagingOptions
+        ),
     },
   };
 }

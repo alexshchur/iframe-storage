@@ -5,7 +5,7 @@
 <script type="text/javascript">
 
     const remoteOriginStorageclient = IframeStorage.constructClient({
-        iframe: { src: 'http://iframehub.com:5101/' }
+        iframe: { src: 'http://iframehub.com:5101/', messagingOptions: { enableLog: true } }
     });
     console.log('client constructed:', remoteOriginStorageclient);
 

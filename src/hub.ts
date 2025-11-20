@@ -1,5 +1,6 @@
 import { expose } from "postmsg-rpc";
 import { get, set, del } from "idb-keyval";
+import { MessagingOptions } from "./types";
 
 export enum ApiMethods {
   LocalStorage_SetItem = "localStorage.setItem",
@@ -12,32 +13,54 @@ export enum ApiMethods {
   indexDBKeyval_Get = "indexDBKeyval.get",
   indexDBKeyval_Del = "indexDBKeyval.del",
 }
+
 export function initHub() {
   if (!window?.parent)
     throw new Error("Hub must be run inside an iframe with a parent window.");
 
+  // for debug purposes
+  addEventListener("message", (event) => {
+    console.log("Hub received message:", event.data);
+  });
+
   const localStorageMethods = {
-    [ApiMethods.LocalStorage_SetItem]: (key: string, value: string) =>
-      localStorage.setItem(key, value),
+    [ApiMethods.LocalStorage_SetItem]: (
+      key: string,
+      value: string,
+      options?: MessagingOptions
+    ) => localStorage.setItem(key, value),
 
-    [ApiMethods.LocalStorage_GetItem]: (key: string) =>
-      localStorage.getItem(key),
+    [ApiMethods.LocalStorage_GetItem]: (
+      key: string,
+      options?: MessagingOptions
+    ) => localStorage.getItem(key),
 
-    [ApiMethods.LocalStorage_RemoveItem]: (key: string) =>
-      localStorage.removeItem(key),
+    [ApiMethods.LocalStorage_RemoveItem]: (
+      key: string,
+      options?: MessagingOptions
+    ) => localStorage.removeItem(key),
 
-    [ApiMethods.LocalStorage_Clear]: () => localStorage.clear(),
+    [ApiMethods.LocalStorage_Clear]: (options?: MessagingOptions) =>
+      localStorage.clear(),
 
-    [ApiMethods.LocalStorage_Key]: (index: number) => localStorage.key(index),
+    [ApiMethods.LocalStorage_Key]: (
+      index: number,
+      options?: MessagingOptions
+    ) => localStorage.key(index),
   };
 
   const indexDBKeyvalMethods = {
-    [ApiMethods.indexDBKeyval_Set]: (key: string, value: string) =>
-      set(key, value),
+    [ApiMethods.indexDBKeyval_Set]: (
+      key: string,
+      value: string,
+      options?: MessagingOptions
+    ) => set(key, value),
 
-    [ApiMethods.indexDBKeyval_Get]: (key: string) => get(key),
+    [ApiMethods.indexDBKeyval_Get]: (key: string, options?: MessagingOptions) =>
+      get(key),
 
-    [ApiMethods.indexDBKeyval_Del]: (key: string) => del(key),
+    [ApiMethods.indexDBKeyval_Del]: (key: string, options?: MessagingOptions) =>
+      del(key),
     // Note: idb-keyval does not have clear and key methods, so we skip them
   };
 
