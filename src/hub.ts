@@ -65,17 +65,25 @@ export function initHub() {
     ...indexDBKeyvalMethods,
   };
 
-  for (const [methodName, methodImpl] of Object.entries(hubService)) {
+  for (const [methodName, methodImpl] of Object.entries(hubService) as Array<
+    [ApiMethods, (...args: unknown[]) => unknown]
+  >) {
     expose(
       methodName,
-      (...args: any[]) => {
+      (...args: unknown[]) => {
         // Avoid Array.prototype.at for broader lib compatibility.
         const maybeOptions = args.length
           ? (args[args.length - 1] as MessagingOptions | undefined)
           : undefined;
         const loggedArgs = maybeOptions ? args.slice(0, args.length - 1) : args;
-        logIfEnabled(maybeOptions, "hub", methodName, loggedArgs);
-        return (methodImpl as any)(...args);
+        logIfEnabled(
+          maybeOptions,
+          "hub",
+          methodName,
+          "before_call",
+          loggedArgs
+        );
+        return methodImpl(...args);
       },
       {
         postMessage: window.parent.postMessage.bind(window.parent),
