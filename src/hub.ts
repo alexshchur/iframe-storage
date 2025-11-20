@@ -19,44 +19,50 @@ export function initHub() {
   if (!window?.parent)
     throw new Error("Hub must be run inside an iframe with a parent window.");
 
+  // for debug purposes
+  addEventListener("message", (event) => {
+    const messagingOptions: MessagingOptions | undefined = event.data?.args
+      ? event.data.args[event.data.args.length - 1]
+      : undefined;
+
+    if (
+      messagingOptions?.enableLog !== "hub" &&
+      messagingOptions?.enableLog !== "both"
+    )
+      return;
+
+    const method = event.data?.func || "unknown_method";
+    const id = event.data?.id || "unknown_id";
+    logIfEnabled(
+      messagingOptions,
+      "hub",
+      `${id}:${method as ApiMethods}`,
+      "received_message",
+      event
+    );
+  });
   const localStorageMethods = {
-    [ApiMethods.LocalStorage_SetItem]: (
-      key: string,
-      value: string,
-      options?: MessagingOptions
-    ) => localStorage.setItem(key, value),
+    [ApiMethods.LocalStorage_SetItem]: (key: string, value: string) =>
+      localStorage.setItem(key, value),
 
-    [ApiMethods.LocalStorage_GetItem]: (
-      key: string,
-      options?: MessagingOptions
-    ) => localStorage.getItem(key),
+    [ApiMethods.LocalStorage_GetItem]: (key: string) =>
+      localStorage.getItem(key),
 
-    [ApiMethods.LocalStorage_RemoveItem]: (
-      key: string,
-      options?: MessagingOptions
-    ) => localStorage.removeItem(key),
+    [ApiMethods.LocalStorage_RemoveItem]: (key: string) =>
+      localStorage.removeItem(key),
 
-    [ApiMethods.LocalStorage_Clear]: (options?: MessagingOptions) =>
-      localStorage.clear(),
+    [ApiMethods.LocalStorage_Clear]: () => localStorage.clear(),
 
-    [ApiMethods.LocalStorage_Key]: (
-      index: number,
-      options?: MessagingOptions
-    ) => localStorage.key(index),
+    [ApiMethods.LocalStorage_Key]: (index: number) => localStorage.key(index),
   };
 
   const indexDBKeyvalMethods = {
-    [ApiMethods.indexDBKeyval_Set]: (
-      key: string,
-      value: string,
-      options?: MessagingOptions
-    ) => set(key, value),
+    [ApiMethods.indexDBKeyval_Set]: (key: string, value: string) =>
+      set(key, value),
 
-    [ApiMethods.indexDBKeyval_Get]: (key: string, options?: MessagingOptions) =>
-      get(key),
+    [ApiMethods.indexDBKeyval_Get]: (key: string) => get(key),
 
-    [ApiMethods.indexDBKeyval_Del]: (key: string, options?: MessagingOptions) =>
-      del(key),
+    [ApiMethods.indexDBKeyval_Del]: (key: string) => del(key),
     // Note: idb-keyval does not have clear and key methods, so we skip them
   };
 
@@ -83,7 +89,9 @@ export function initHub() {
           "before_call",
           loggedArgs
         );
-        return methodImpl(...args);
+        const result = methodImpl(...args);
+        logIfEnabled(maybeOptions, "hub", methodName, "after_call", result);
+        return result;
       },
       {
         postMessage: window.parent.postMessage.bind(window.parent),

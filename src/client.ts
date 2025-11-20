@@ -38,6 +38,23 @@ export function constructClient({
     return caller(method, callerOptions)(...args, messagingOptions);
   };
 
+  // for debug purposes
+  addEventListener("message", (event) => {
+    const sender = event.data.sender;
+
+    if ("postmsg-rpc/server" !== sender) return;
+
+    if (
+      messagingOptions?.enableLog !== "client" &&
+      messagingOptions?.enableLog !== "both"
+    )
+      return;
+
+    const id = event.data?.id || "unknown_id";
+
+    logIfEnabled(messagingOptions, "client", id, `response`, event);
+  });
+
   return {
     localStorage: {
       setItem: (key: string, value: string) =>

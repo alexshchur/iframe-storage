@@ -9,7 +9,7 @@ import { Domain, MessagingOptions } from "../types";
 export function logIfEnabled(
   options: MessagingOptions | undefined,
   domain: Domain,
-  action: ApiMethods,
+  action: `${string}:${ApiMethods | "response"}` | ApiMethods | "response",
   ...info: unknown[]
 ): void {
   if (!options?.enableLog) return;
