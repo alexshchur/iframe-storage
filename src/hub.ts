@@ -1,10 +1,6 @@
 import { expose } from "postmsg-rpc";
 import { get, set, del } from "idb-keyval";
-type HubOptions = {
-  postMessage?: typeof window.postMessage;
-};
 
-type Hub = {};
 export enum ApiMethods {
   LocalStorage_SetItem = "localStorage.setItem",
   LocalStorage_GetItem = "localStorage.getItem",
@@ -16,8 +12,10 @@ export enum ApiMethods {
   indexDBKeyval_Get = "indexDBKeyval.get",
   indexDBKeyval_Del = "indexDBKeyval.del",
 }
-export function constructHub(options: HubOptions = {}): Hub {
-  console.log("constructHub options:", options);
+export function initHub() {
+  if (!window?.parent)
+    throw new Error("Hub must be run inside an iframe with a parent window.");
+
   const localStorageMethods = {
     [ApiMethods.LocalStorage_SetItem]: (key: string, value: string) =>
       localStorage.setItem(key, value),
@@ -49,7 +47,8 @@ export function constructHub(options: HubOptions = {}): Hub {
   };
 
   for (const [methodName, methodImpl] of Object.entries(hubService)) {
-    expose(methodName, methodImpl, options);
+    expose(methodName, methodImpl, {
+      postMessage: window.parent.postMessage.bind(window.parent),
+    });
   }
-  return {};
 }

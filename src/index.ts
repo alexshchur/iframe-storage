@@ -1,2 +1,2 @@
-export { constructHub } from "./hub";
+export { initHub } from "./hub";
 export { constructClient } from "./client";
