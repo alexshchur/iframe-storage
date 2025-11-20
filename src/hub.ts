@@ -1,7 +1,7 @@
 import { expose } from "postmsg-rpc";
 import { get, set, del } from "idb-keyval";
 import { MessagingOptions } from "./types";
-import { logIfEnabled } from "./log";
+import { logIfEnabled } from "./utils/log";
 
 export enum ApiMethods {
   LocalStorage_SetItem = "localStorage.setItem",

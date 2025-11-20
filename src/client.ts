@@ -1,7 +1,7 @@
 import { caller } from "postmsg-rpc";
 import { ApiMethods } from "./hub";
 import { MessagingOptions } from "./types";
-import { logIfEnabled } from "./log";
+import { logIfEnabled } from "./utils/log";
 type Client = {
   localStorage: {
     setItem: (key: string, value: string) => Promise<void>;
@@ -33,7 +33,7 @@ export function constructClient({
   const callerOptions = { postMessage };
 
   // Unified dynamic caller to reduce repetition.
-  const call = (method: ApiMethods, ...args: any[]) => {
+  const callerWithOptions = (method: ApiMethods, ...args: any[]) => {
     logIfEnabled(messagingOptions, "client", method, args);
     return caller(method, callerOptions)(...args, messagingOptions);
   };
@@ -41,18 +41,28 @@ export function constructClient({
   return {
     localStorage: {
       setItem: (key: string, value: string) =>
-        call(ApiMethods.LocalStorage_SetItem, key, value),
-      getItem: (key: string) => call(ApiMethods.LocalStorage_GetItem, key),
+        callerWithOptions(ApiMethods.LocalStorage_SetItem, key, value),
+
+      getItem: (key: string) =>
+        callerWithOptions(ApiMethods.LocalStorage_GetItem, key),
+
       removeItem: (key: string) =>
-        call(ApiMethods.LocalStorage_RemoveItem, key),
-      clear: () => call(ApiMethods.LocalStorage_Clear),
-      key: (index: number) => call(ApiMethods.LocalStorage_Key, index),
+        callerWithOptions(ApiMethods.LocalStorage_RemoveItem, key),
+
+      clear: () => callerWithOptions(ApiMethods.LocalStorage_Clear),
+
+      key: (index: number) =>
+        callerWithOptions(ApiMethods.LocalStorage_Key, index),
     },
     indexedDBKeyval: {
       set: (key: string, value: string) =>
-        call(ApiMethods.indexDBKeyval_Set, key, value),
-      get: (key: string) => call(ApiMethods.indexDBKeyval_Get, key),
-      del: (key: string) => call(ApiMethods.indexDBKeyval_Del, key),
+        callerWithOptions(ApiMethods.indexDBKeyval_Set, key, value),
+
+      get: (key: string) =>
+        callerWithOptions(ApiMethods.indexDBKeyval_Get, key),
+
+      del: (key: string) =>
+        callerWithOptions(ApiMethods.indexDBKeyval_Del, key),
     },
   };
 }

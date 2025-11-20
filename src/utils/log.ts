@@ -1,4 +1,4 @@
-import { Domain, MessagingOptions } from "./types";
+import { Domain, MessagingOptions } from "../types";
 
 /**
  * Conditional logger with two-level context: domain and action.
