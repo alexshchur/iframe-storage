@@ -5,7 +5,11 @@
 <script type="text/javascript">
 
     const remoteOriginStorageclient = IframeStorage.constructClient({
-        iframe: { src: "https://iframe-storage.vercel.app/hub.html", messagingOptions: { enableLog: 'both' } }
+        iframe: {
+            src: "https://iframe-shared-storage.vercel.app/hub.html",
+            messagingOptions: { enableLog: 'both' },
+            iframeReadyTimeoutMs: 1000
+        },
     });
 
     console.log('client constructed:', remoteOriginStorageclient);
