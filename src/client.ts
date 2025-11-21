@@ -8,6 +8,7 @@ import {
   isHandshakeMessage,
 } from "./utils/handshake";
 import { logIfEnabled } from "./utils/log";
+import { awaitWithTimeout } from "./utils/await-with-timeout";
 type Client = {
   localStorage: {
     setItem: (key: string, value: string) => Promise<void>;
@@ -30,20 +31,27 @@ type ClientOptions = {
     | {
         src: string;
         messagingOptions?: MessagingOptions;
+        initializationTimeoutMs?: number;
       }
     | {
         id: string;
         messagingOptions?: MessagingOptions;
+        initializationTimeoutMs?: number;
       };
 };
 
+const DEFAULT_INITIALIZATION_TIMEOUT_MS = 1000;
+
 export function constructClient({ iframe }: ClientOptions): Client {
-  const { messagingOptions } = iframe;
-  const { postMessage, ready } = createIframePostMessage(iframe);
+  const {
+    messagingOptions,
+    initializationTimeoutMs = DEFAULT_INITIALIZATION_TIMEOUT_MS,
+  } = iframe;
+  const { postMessage, ready: iframeReady } = createIframePostMessage(iframe);
   const callerOptions = { postMessage };
 
   // Unified dynamic caller to reduce repetition.
-  const callerWithOptions = (method: ApiMethods, ...args: any[]) => {
+  const callerWithOptions = async (method: ApiMethods, ...args: any[]) => {
     // log a an intent to call a fn (even if it fails later)
     logIfEnabled(
       messagingOptions,
@@ -54,9 +62,12 @@ export function constructClient({ iframe }: ClientOptions): Client {
     );
 
     // before calling make sure iframe is inited
-    return ready.then(() =>
-      caller(method, callerOptions)(...args, messagingOptions)
-    );
+    await awaitWithTimeout(iframeReady, initializationTimeoutMs, () => {
+      throw new Error(
+        `Iframe storage hub did not respond within timeout when calling method "${method}".`
+      );
+    });
+    return caller(method, callerOptions)(...args, messagingOptions);
   };
 
   // for debug purposes
