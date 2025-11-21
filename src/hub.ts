@@ -1,6 +1,12 @@
 import { expose } from "postmsg-rpc";
 import { get, set, del } from "idb-keyval";
 import { MessagingOptions } from "./types";
+import {
+  createHandshakeMessage,
+  HANDSHAKE_REQUEST_TYPE,
+  HANDSHAKE_RESPONSE_TYPE,
+  isHandshakeMessage,
+} from "./utils/handshake";
 import { logIfEnabled } from "./utils/log";
 
 export enum ApiMethods {
@@ -19,8 +25,19 @@ export function initHub() {
   if (!window?.parent)
     throw new Error("Hub must be run inside an iframe with a parent window.");
 
-  // for debug purposes
+  // for debug purposes and readiness handshake
   addEventListener("message", (event) => {
+    if (
+      event.source === window.parent &&
+      isHandshakeMessage(event.data, HANDSHAKE_REQUEST_TYPE)
+    ) {
+      window.parent.postMessage(
+        createHandshakeMessage(HANDSHAKE_RESPONSE_TYPE),
+        event.origin
+      );
+      return;
+    }
+
     const messagingOptions: MessagingOptions | undefined = event.data?.args
       ? event.data.args[event.data.args.length - 1]
       : undefined;

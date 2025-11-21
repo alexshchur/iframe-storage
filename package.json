@@ -7,7 +7,8 @@
     "build": "npm run build:module && npm run build:browser",
     "build:module": "tsc --project tsconfig.json",
     "build:browser": "esbuild src/index.ts --bundle --format=iife --global-name=IframeStorage --outfile=dist/browser.js",
-    "build:watch": "npm run build:browser -- --watch",
+    "build:browser:watch": "npm run build:browser -- --watch",
+    "build:module:watch": "npm run build:module -- --watch",
     "serve:client": "serve -l 5100 -n -c configs/serve.client.json .",
     "serve:hub": "serve -l 5101 -n -c configs/serve.hub.json .",
     "prepublishOnly": "npm run build"
