@@ -47,10 +47,12 @@ export function constructClient({ iframe }: ClientOptions): Client {
     messagingOptions,
     iframeReadyTimeoutMs = DEFAULT_INITIALIZATION_TIMEOUT_MS,
   } = iframe;
-  const { postMessage, ready: iframeReady } = createIframePostMessage(
-    iframe,
-    iframeReadyTimeoutMs
-  );
+  const {
+    postMessage,
+    ready: iframeReady,
+    getWaitDurationMs: getIframeWaitDurationMs,
+    isReady: isIframeReady,
+  } = createIframePostMessage(iframe, iframeReadyTimeoutMs);
   const callerOptions = { postMessage };
 
   // Unified dynamic caller to reduce repetition.
@@ -64,12 +66,25 @@ export function constructClient({ iframe }: ClientOptions): Client {
       args
     );
 
-    // before calling make sure iframe is inited. Maybe must be a separate timeout?
-    await awaitWithTimeout(iframeReady, iframeReadyTimeoutMs, () => {
-      throw new Error(
-        `Iframe storage hub did not respond within timeout when calling method "${method}".`
-      );
-    });
+    // Ensure the hub is initialized before calling the RPC.
+    // We don't fail inside the readiness tracker; instead, we enforce the
+    // threshold here based on how long initialization has already taken.
+    if (!isIframeReady()) {
+      const elapsed = getIframeWaitDurationMs();
+      const remaining = iframeReadyTimeoutMs - elapsed;
+
+      if (remaining <= 0) {
+        throw new Error(
+          `Iframe storage hub did not initialize within the allowed time before calling method "${method}". Waited ${elapsed}ms.`
+        );
+      }
+
+      await awaitWithTimeout(iframeReady, remaining, () => {
+        throw new Error(
+          `Iframe storage hub did not initialize within the allowed time before calling method "${method}". Waited ${iframeReadyTimeoutMs}ms.`
+        );
+      });
+    }
     return caller(method, callerOptions)(...args, messagingOptions);
   };
 
@@ -125,6 +140,8 @@ function createIframePostMessage(
 ): {
   postMessage: typeof window.postMessage;
   ready: Promise<void>;
+  getWaitDurationMs: () => number;
+  isReady: () => boolean;
 } {
   const iframe =
     "src" in iframeOptions
@@ -136,9 +153,13 @@ function createIframePostMessage(
     throw new Error("Injected iframe is missing a contentWindow reference.");
   }
 
+  const readiness = waitForHubReady(iframe);
+
   return {
     postMessage: contentWindow.postMessage.bind(contentWindow),
-    ready: waitForHubReady(iframe, iframeReadyTimeoutMs),
+    ready: readiness.ready,
+    getWaitDurationMs: readiness.getWaitDurationMs,
+    isReady: readiness.isReady,
   };
 }
 
@@ -199,33 +220,47 @@ function hideIframe(iframe: HTMLIFrameElement): void {
   iframe.style.pointerEvents = "none";
 }
 
-const IFRAME_READY_TIMEOUT_MS = 1000;
 const IFRAME_READY_PING_INTERVAL_MS = 250;
-const iframeReadyPromises = new WeakMap<HTMLIFrameElement, Promise<void>>();
+type IframeReadyState = {
+  ready: Promise<void>;
+  startedAt: number;
+  resolvedAt?: number;
+  isReady: boolean;
+};
+const iframeReadyStates = new WeakMap<HTMLIFrameElement, IframeReadyState>();
 
-function waitForHubReady(
-  iframe: HTMLIFrameElement,
-  timeoutMs: number
-): Promise<void> {
-  const existing = iframeReadyPromises.get(iframe);
+function waitForHubReady(iframe: HTMLIFrameElement): {
+  ready: Promise<void>;
+  getWaitDurationMs: () => number;
+  isReady: () => boolean;
+} {
+  const existing = iframeReadyStates.get(iframe);
   if (existing) {
-    return existing;
+    return {
+      ready: existing.ready,
+      getWaitDurationMs: () =>
+        existing.isReady && existing.resolvedAt
+          ? existing.resolvedAt - existing.startedAt
+          : Date.now() - existing.startedAt,
+      isReady: () => existing.isReady,
+    };
   }
 
-  const promise = new Promise<void>((resolve, reject) => {
-    const { contentWindow } = iframe;
+  const startedAt = Date.now();
+  let resolvedAt: number | undefined;
+  let readyFlag = false;
 
-    if (!contentWindow) {
-      reject(
-        new Error("Cannot determine iframe readiness: missing contentWindow.")
-      );
-      return;
-    }
+  const promise = new Promise<void>((resolve) => {
+    const { contentWindow } = iframe;
 
     const handleMessage = (event: MessageEvent) => {
       if (event.source !== contentWindow) return;
       if (!isHandshakeMessage(event.data, HANDSHAKE_RESPONSE_TYPE)) return;
       cleanup();
+      readyFlag = true;
+      resolvedAt = Date.now();
+      state.isReady = true;
+      state.resolvedAt = resolvedAt;
       resolve();
     };
 
@@ -233,19 +268,8 @@ function waitForHubReady(
       const message = createHandshakeMessage(HANDSHAKE_REQUEST_TYPE);
       // Use "*" to avoid origin mismatches while the iframe is still running
       // about:blank before the remote hub document takes over.
-      contentWindow.postMessage(message, "*");
+      contentWindow!.postMessage(message, "*");
     };
-
-    const timeoutId = window.setTimeout(() => {
-      cleanup();
-      reject(
-        new Error(
-          `Timed out waiting for iframe "${
-            iframe.id || iframe.src
-          }" to finish loading.`
-        )
-      );
-    }, timeoutMs);
 
     const intervalId = window.setInterval(
       sendPing,
@@ -254,7 +278,6 @@ function waitForHubReady(
 
     const cleanup = () => {
       window.removeEventListener("message", handleMessage);
-      window.clearTimeout(timeoutId);
       window.clearInterval(intervalId);
     };
 
@@ -262,6 +285,20 @@ function waitForHubReady(
     sendPing();
   });
 
-  iframeReadyPromises.set(iframe, promise);
-  return promise;
+  const state: IframeReadyState = {
+    ready: promise,
+    startedAt,
+    isReady: readyFlag,
+  };
+
+  iframeReadyStates.set(iframe, state);
+
+  return {
+    ready: promise,
+    getWaitDurationMs: () =>
+      state.isReady && state.resolvedAt !== undefined
+        ? state.resolvedAt - state.startedAt
+        : Date.now() - state.startedAt,
+    isReady: () => state.isReady,
+  };
 }
