@@ -52,7 +52,7 @@ export function constructClient({ iframe }: ClientOptions): Client {
     ready: iframeReady,
     getWaitDurationMs: getIframeWaitDurationMs,
     isReady: isIframeReady,
-  } = createIframePostMessage(iframe, iframeReadyTimeoutMs);
+  } = createIframePostMessage(iframe);
   const callerOptions = { postMessage };
 
   // Unified dynamic caller to reduce repetition.
@@ -135,8 +135,7 @@ export function constructClient({ iframe }: ClientOptions): Client {
 }
 
 function createIframePostMessage(
-  iframeOptions: ClientOptions["iframe"],
-  iframeReadyTimeoutMs: number
+  iframeOptions: ClientOptions["iframe"]
 ): {
   postMessage: typeof window.postMessage;
   ready: Promise<void>;
