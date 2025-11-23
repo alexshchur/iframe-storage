@@ -18,7 +18,7 @@ type Client = {
     key: (index: number) => Promise<string | null>;
   };
 
-  indexedDBKeyval?: {
+  indexedDBKeyval: {
     set: (key: string, value: string) => Promise<void>;
     get: (key: string) => Promise<string | undefined>;
     del: (key: string) => Promise<void>;
@@ -134,9 +134,7 @@ export function constructClient({ iframe }: ClientOptions): Client {
   };
 }
 
-function createIframePostMessage(
-  iframeOptions: ClientOptions["iframe"]
-): {
+function createIframePostMessage(iframeOptions: ClientOptions["iframe"]): {
   postMessage: typeof window.postMessage;
   ready: Promise<void>;
   getWaitDurationMs: () => number;
