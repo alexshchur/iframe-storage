@@ -102,7 +102,13 @@ export function constructClient({ iframe }: ClientOptions): Client {
 
     const id = event.data?.id || "unknown_id";
 
-    logIfEnabled(messagingOptions, "client", id, `response`, event);
+    logIfEnabled(
+      messagingOptions,
+      "client",
+      id,
+      `response`,
+      JSON.stringify(event.data).substring(0, 200)
+    );
   });
 
   return {

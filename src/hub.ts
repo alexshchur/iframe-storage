@@ -55,7 +55,7 @@ export function initHub() {
       "hub",
       `${id}:${method as ApiMethods}`,
       "received_message",
-      event
+      JSON.stringify(event.data).substring(0, 200)
     );
   });
   const localStorageMethods = {
@@ -93,7 +93,7 @@ export function initHub() {
   >) {
     expose(
       methodName,
-      (...args: unknown[]) => {
+      async (...args: unknown[]) => {
         // Avoid Array.prototype.at for broader lib compatibility.
         const maybeOptions = args.length
           ? (args[args.length - 1] as MessagingOptions | undefined)
@@ -106,8 +106,14 @@ export function initHub() {
           "before_call",
           loggedArgs
         );
-        const result = methodImpl(...args);
-        logIfEnabled(maybeOptions, "hub", methodName, "after_call", result);
+        const result = await methodImpl(...args);
+        logIfEnabled(
+          maybeOptions,
+          "hub",
+          methodName,
+          "after_call",
+          String(result).substring(0, 200)
+        );
         return result;
       },
       {
