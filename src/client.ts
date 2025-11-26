@@ -26,26 +26,26 @@ type Client = {
 };
 
 const DEFAULT_IFRAME_ID = "iframe-storage-hub";
+type BaseIframeOptions = {
+  messagingOptions?: MessagingOptions;
+  iframeReadyTimeoutMs?: number;
+  methodCallTimeoutMs?: number;
+};
+
 type ClientOptions = {
   iframe:
-    | {
-        src: string;
-        messagingOptions?: MessagingOptions;
-        iframeReadyTimeoutMs?: number;
-      }
-    | {
-        id: string;
-        messagingOptions?: MessagingOptions;
-        iframeReadyTimeoutMs?: number;
-      };
+    | ({ src: string } & BaseIframeOptions)
+    | ({ id: string } & BaseIframeOptions);
 };
 
 const DEFAULT_INITIALIZATION_TIMEOUT_MS = 1000;
+const DEFAULT_METHOD_CALL_TIMEOUT_MS = 1000;
 
 export function constructClient({ iframe }: ClientOptions): Client {
   const {
     messagingOptions,
     iframeReadyTimeoutMs = DEFAULT_INITIALIZATION_TIMEOUT_MS,
+    methodCallTimeoutMs = DEFAULT_METHOD_CALL_TIMEOUT_MS,
   } = iframe;
   const {
     postMessage,
@@ -85,7 +85,16 @@ export function constructClient({ iframe }: ClientOptions): Client {
         );
       });
     }
-    return caller(method, callerOptions)(...args, messagingOptions);
+    const rpcPromise = caller(method, callerOptions)(
+      ...args,
+      messagingOptions
+    );
+
+    return await awaitWithTimeout(rpcPromise, methodCallTimeoutMs, () => {
+      throw new Error(
+        `Iframe storage hub did not respond to method "${method}". Waited ${methodCallTimeoutMs}ms.`
+      );
+    });
   };
 
   // for debug purposes

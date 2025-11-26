@@ -48,6 +48,7 @@ const storage = constructClient({
     src: "https://storage-origin.example.com/hub.html",
     messagingOptions: { enableLog: "client" },
     iframeReadyTimeoutMs: 1500,
+    methodCallTimeoutMs: 2000,
   },
 });
 
@@ -75,6 +76,7 @@ Call this once inside the hub iframe. The hub **must** have a parent window (i.e
 - Pass `{ iframe: { src: string } }` to inject a hidden iframe that points to your hub URL. The iframe receives an auto-generated `iframe-storage-hub` id.
 - Pass `{ iframe: { id: string } }` to bind to an already-rendered `<iframe>` (useful when you control markup separately).
 - `iframeReadyTimeoutMs` (default `1000`) caps how long the client will wait for the handshake before every RPC.
+- `methodCallTimeoutMs` (default `1000`) caps how long each RPC waits for a reply before rejecting, so hung hubs fail fast instead of stalling tests forever.
 - `messagingOptions.enableLog` accepts `"client" | "hub" | "both"`. When set, both sides `console.log` contextual events (method names, payloads, and responses).
 
 The returned object exposes:
