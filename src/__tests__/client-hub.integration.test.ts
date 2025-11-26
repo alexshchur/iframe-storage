@@ -51,6 +51,86 @@ describe("client and hub realistic communication", () => {
     });
   });
 
+  it("retries RPCs that time out before succeeding", async () => {
+    await withClientHubSandbox(async ({ iframeId, runInChild }) => {
+      runInChild(() => {
+        let shouldDropNextResponse = true;
+        const parentWindow = window.parent!;
+        const originalPostMessage = parentWindow.postMessage.bind(parentWindow);
+        parentWindow.postMessage = ((
+          ...args: Parameters<Window["postMessage"]>
+        ) => {
+          const [message] = args;
+          if (
+            shouldDropNextResponse &&
+            message &&
+            typeof message === "object" &&
+            (message as { sender?: string }).sender === "postmsg-rpc/server"
+          ) {
+            shouldDropNextResponse = false;
+            return;
+          }
+          return originalPostMessage(...args);
+        }) as Window["postMessage"];
+
+        initHub();
+      });
+
+      const client = constructClient({
+        iframe: {
+          id: iframeId,
+          iframeReadyTimeoutMs: 50,
+          methodCallTimeoutMs: 10,
+          methodCallRetries: 1,
+        },
+      });
+
+      await client.localStorage.setItem("retry-key", "value");
+      await expect(client.localStorage.getItem("retry-key")).resolves.toBe(
+        "value"
+      );
+    });
+  });
+
+  it("rejects when RPC responses keep timing out even after retries", async () => {
+    await withClientHubSandbox(async ({ iframeId, runInChild }) => {
+      runInChild(() => {
+        const parentWindow = window.parent!;
+        const originalPostMessage = parentWindow.postMessage.bind(parentWindow);
+        parentWindow.postMessage = ((
+          ...args: Parameters<Window["postMessage"]>
+        ) => {
+          const [message] = args;
+          if (
+            message &&
+            typeof message === "object" &&
+            (message as { sender?: string }).sender === "postmsg-rpc/server"
+          ) {
+            return;
+          }
+          return originalPostMessage(...args);
+        }) as Window["postMessage"];
+
+        initHub();
+      });
+
+      const client = constructClient({
+        iframe: {
+          id: iframeId,
+          iframeReadyTimeoutMs: 50,
+          methodCallTimeoutMs: 15,
+          methodCallRetries: 2,
+        },
+      });
+
+      await expect(
+        client.localStorage.getItem("always-timeout")
+      ).rejects.toThrow(
+        'Iframe storage hub did not respond to method "localStorage.getItem". Waited 15ms.'
+      );
+    });
+  });
+
   it("rejects calls when the hub never answers RPC messages", async () => {
     await withClientHubSandbox(async ({ iframeId, runInChild }) => {
       runInChild(() => {

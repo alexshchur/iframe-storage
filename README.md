@@ -49,6 +49,7 @@ const storage = constructClient({
     messagingOptions: { enableLog: "client" },
     iframeReadyTimeoutMs: 1500,
     methodCallTimeoutMs: 2000,
+    methodCallRetries: 2,
   },
 });
 
@@ -77,6 +78,7 @@ Call this once inside the hub iframe. The hub **must** have a parent window (i.e
 - Pass `{ iframe: { id: string } }` to bind to an already-rendered `<iframe>` (useful when you control markup separately).
 - `iframeReadyTimeoutMs` (default `1000`) caps how long the client will wait for the handshake before every RPC.
 - `methodCallTimeoutMs` (default `1000`) caps how long each RPC waits for a reply before rejecting, so hung hubs fail fast instead of stalling tests forever.
+- `methodCallRetries` (default `0`) retries RPCs that ended with a timeout. Each retry performs the same readiness check and timeout, so a `methodCallRetries` of 2 with `methodCallTimeoutMs` of 1000 can run for up to ~3 seconds before failing.
 - `messagingOptions.enableLog` accepts `"client" | "hub" | "both"`. When set, both sides `console.log` contextual events (method names, payloads, and responses).
 
 The returned object exposes:

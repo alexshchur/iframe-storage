@@ -30,6 +30,7 @@ type BaseIframeOptions = {
   messagingOptions?: MessagingOptions;
   iframeReadyTimeoutMs?: number;
   methodCallTimeoutMs?: number;
+  methodCallRetries?: number;
 };
 
 type ClientOptions = {
@@ -40,12 +41,23 @@ type ClientOptions = {
 
 const DEFAULT_INITIALIZATION_TIMEOUT_MS = 1000;
 const DEFAULT_METHOD_CALL_TIMEOUT_MS = 1000;
+const DEFAULT_METHOD_CALL_RETRIES = 0;
+
+class MethodCallTimeoutError extends Error {
+  constructor(public method: ApiMethods, public timeoutMs: number) {
+    super(
+      `Iframe storage hub did not respond to method "${method}". Waited ${timeoutMs}ms.`
+    );
+    this.name = "IframeStorageMethodTimeoutError";
+  }
+}
 
 export function constructClient({ iframe }: ClientOptions): Client {
   const {
     messagingOptions,
     iframeReadyTimeoutMs = DEFAULT_INITIALIZATION_TIMEOUT_MS,
     methodCallTimeoutMs = DEFAULT_METHOD_CALL_TIMEOUT_MS,
+    methodCallRetries = DEFAULT_METHOD_CALL_RETRIES,
   } = iframe;
   const {
     postMessage,
@@ -69,32 +81,58 @@ export function constructClient({ iframe }: ClientOptions): Client {
     // Ensure the hub is initialized before calling the RPC.
     // We don't fail inside the readiness tracker; instead, we enforce the
     // threshold here based on how long initialization has already taken.
-    if (!isIframeReady()) {
-      const elapsed = getIframeWaitDurationMs();
-      const remaining = iframeReadyTimeoutMs - elapsed;
+    const performCall = async () => {
+      if (!isIframeReady()) {
+        const elapsed = getIframeWaitDurationMs();
+        const remaining = iframeReadyTimeoutMs - elapsed;
 
-      if (remaining <= 0) {
-        throw new Error(
-          `Iframe storage hub did not initialize within the allowed time before calling method "${method}". Waited ${elapsed}ms.`
-        );
+        if (remaining <= 0) {
+          throw new Error(
+            `Iframe storage hub did not initialize within the allowed time before calling method "${method}". Waited ${elapsed}ms.`
+          );
+        }
+
+        await awaitWithTimeout(iframeReady, remaining, () => {
+          throw new Error(
+            `Iframe storage hub did not initialize within the allowed time before calling method "${method}". Waited ${iframeReadyTimeoutMs}ms.`
+          );
+        });
       }
-
-      await awaitWithTimeout(iframeReady, remaining, () => {
-        throw new Error(
-          `Iframe storage hub did not initialize within the allowed time before calling method "${method}". Waited ${iframeReadyTimeoutMs}ms.`
-        );
-      });
-    }
-    const rpcPromise = caller(method, callerOptions)(
-      ...args,
-      messagingOptions
-    );
-
-    return await awaitWithTimeout(rpcPromise, methodCallTimeoutMs, () => {
-      throw new Error(
-        `Iframe storage hub did not respond to method "${method}". Waited ${methodCallTimeoutMs}ms.`
+      const rpcPromise = caller(method, callerOptions)(
+        ...args,
+        messagingOptions
       );
-    });
+
+      return await awaitWithTimeout(rpcPromise, methodCallTimeoutMs, () => {
+        throw new MethodCallTimeoutError(method, methodCallTimeoutMs);
+      });
+    };
+
+    let attempt = 0;
+    while (attempt <= methodCallRetries) {
+      try {
+        return await performCall();
+      } catch (error) {
+        const isTimeoutError =
+          error instanceof MethodCallTimeoutError ||
+          (error instanceof Error &&
+            error.name === "IframeStorageMethodTimeoutError");
+        const remainingAttempts = methodCallRetries - attempt;
+        if (!isTimeoutError || remainingAttempts <= 0) {
+          throw error;
+        }
+        logIfEnabled(
+          messagingOptions,
+          "client",
+          method,
+          "retry-after-timeout",
+          `attempt=${attempt + 1}`,
+          `remaining_attempts=${remainingAttempts - 1}`
+        );
+        attempt += 1;
+      }
+    }
+    throw new Error("Unreachable RPC retry loop exit.");
   };
 
   // for debug purposes

@@ -1,6 +1,6 @@
 {
   "name": "iframe-shared-storage",
-  "version": "1.0.33",
+  "version": "1.0.34",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/alexshchur/iframe-shared-storage.git"
